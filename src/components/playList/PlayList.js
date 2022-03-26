@@ -10,8 +10,8 @@ const PlayList = ({ playList, removeTrackHandler, ...props }) => {
   //save playlist to spotify
   const savePlayListHandler = (playlistName, trackURIs) => {
     if (trackURIs.length > 0) {
-      Spotify.savePlaylist(playlistName, trackURIs).then((resolved) => {
-        alert("Playlist saved!");
+      Spotify.savePlayList(playlistName, trackURIs).then((resolved) => {
+        alert(`Playlist ${playlistName} saved!`);
       });
     } else {
       alert("No tracks to save");

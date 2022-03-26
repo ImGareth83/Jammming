@@ -10,98 +10,87 @@ const SCOPES_URL_PARAM = SCOPES.join(SPACE_DELIMITER);
 let accessToken;
 
 const Spotify = {
+  authURL() {
+    const accessUrl = `${SPOTIFY_ENDPOINT}?client_id=${CLIENT_ID}&response_type=${RESPONSE_TYPE}&scope=${SCOPES_URL_PARAM}&redirect_uri=${REDIRECT_URI}`;
+    window.location = accessUrl;
+  },
   getAccessToken() {
+    accessToken = window.localStorage.getItem("accessToken");
+
     if (accessToken) return accessToken;
 
-    const hasAccessToken = window.location.href.match(/access_token=([^&]*)/);
-    const hasExpiresIn = window.location.href.match(/expires_in=([^&]*)/);
+    const tokenHash = window.location.href.match(/access_token=([^&]*)/);
+    const expiresInHash = window.location.href.match(/expires_in=([^&]*)/);
 
-    if (hasAccessToken && hasExpiresIn) {
-      accessToken = hasAccessToken[1];
-      const expiresIn = Number(hasExpiresIn[1]);
-      window.setTimeout(() => (accessToken = ""), expiresIn * 1000);
-      return accessToken;
-    } else {
-      const accessUrl = `${SPOTIFY_ENDPOINT}?client_id=${CLIENT_ID}&response_type=${RESPONSE_TYPE}&scope=${SCOPES_URL_PARAM}&redirect_uri=${REDIRECT_URI}`;
-      window.location = accessUrl;
+    if (tokenHash && expiresInHash) {
+      let token = tokenHash[1];
+      accessToken = token;
+      const expiresIn = Number(expiresInHash[1]);
+
+      window.setTimeout(() => (token = ""), expiresIn * 1000);
+      window.location.hash = "";
+      window.localStorage.setItem("accessToken", token);
     }
+    return accessToken;
   },
-  search(term) {
-    const searchUrl = `https://api.spotify.com/v1/search?type=track&q=${term}`;
-
-    if (!accessToken) {
-      accessToken = Spotify.getAccessToken();
-    }
-
-    return fetch(searchUrl, {
-      headers: {
-        Authorization: `Bearer  ${accessToken}`,
-      },
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        throw new Error(response.statusText);
-      })
-      .then((jsonResponse) => {
-        if (!jsonResponse.tracks) {
-          return [];
-        }
-
-        return jsonResponse.tracks.items.map((track) => ({
-          id: track.id,
-          name: track.name,
-          artist: track.artists[0].name,
-          album: track.album.name,
-          uri: track.uri,
-        }));
-      })
-      .catch((error) => console.log("error in search:" + error.message));
-  },
-  savePlaylist(playlistName, trackURIs) {
-    if (!playlistName || !trackURIs.length) {
-      return;
-    }
-
-    if (!accessToken) {
-      accessToken = Spotify.getAccessToken();
-    }
-
-    const headers = { Authorization: `Bearer ${accessToken}` };
-    let userId;
-    return fetch("https://api.spotify.com/v1/me", { headers: headers })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        throw new Error(response.statusText);
-      })
-      .then((response) => {
-        userId = response.id;
-        return fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
-          headers: headers,
-          method: "POST",
-          body: JSON.stringify({ name: playlistName }),
-        });
-      })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        throw new Error(response.statusText);
-      })
-      .then((jsonResponse) => {
-        const playlistId = jsonResponse.id;
-        return fetch(
-          `https://api.spotify.com/v1/users/${userId}/playlists/${playlistId}/tracks`,
-          {
-            headers: headers,
-            method: "POST",
-            body: JSON.stringify({ uris: trackURIs }),
-          }
-        );
+  async searchTerm(t) {
+    const searchUrl = `https://api.spotify.com/v1/search?q=${t}&type=track&limit=10`;
+    let trackList;
+    try {
+      const response = await fetch(searchUrl, {
+        headers: {
+          Authorization: `Bearer  ${accessToken}`,
+        },
       });
+
+      if (!response.ok) throw new Error(response.statusText);
+
+      const jsonResponse = await response.json();
+      trackList = jsonResponse.tracks.items.map((track) => ({
+        id: track.id,
+        name: track.name,
+        artist: track.artists[0].name,
+        album: track.album.name,
+        uri: track.uri,
+      }));
+    } catch (error) {
+      throw new Error(error);
+    }
+
+    return trackList;
+  },
+  async savePlayList(playlistName, trackURIs) {
+    const saveURL = "https://api.spotify.com/v1/me";
+    const headers = { Authorization: `Bearer ${accessToken}` };
+
+    let response = await fetch(saveURL, {
+      headers: headers,
+    });
+
+    if (!response.ok) throw new Error(response.statusText);
+    let jsonResponse = await response.json();
+    const userId = jsonResponse.id;
+    //====================================================================================
+    const savePlaylistURL = `https://api.spotify.com/v1/users/${userId}/playlists`;
+    response = await fetch(savePlaylistURL, {
+      headers: headers,
+      method: "POST",
+      body: JSON.stringify({ name: playlistName }),
+    });
+
+    if (!response.ok) throw new Error(response.statusText);
+
+    jsonResponse = await response.json();
+    const playlistId = jsonResponse.id;
+    //====================================================================================
+    const addTrackURL = `https://api.spotify.com/v1/users/${userId}/playlists/${playlistId}/tracks`;
+    response = await fetch(addTrackURL, {
+      headers: headers,
+      method: "POST",
+      body: JSON.stringify({ uris: trackURIs }),
+    });
+
+    return response;
   },
 };
 

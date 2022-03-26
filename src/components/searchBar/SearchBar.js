@@ -8,7 +8,7 @@ const SearchBar = ({ resultHandler }) => {
   const searchTerm = (event) => {
     event.preventDefault();
 
-    Spotify.search(term).then((data) => resultHandler(data));
+    Spotify.searchTerm(term).then((data) => resultHandler(data));
     // resultHandler(Spotify.search(term));
   };
 
