@@ -31,7 +31,7 @@ h2 {
 }
 
 .App {
-  height: auto;
+  height: 100%;
   padding: 0 17% 10% 17%;
   background-image: url("./background_photo_desktop.jpg");
   background-size: cover;

@@ -1,8 +1,8 @@
-const CLIENT_ID = "a4352f8e8f8f41dbaa35d72686e756c1";
-const REDIRECT_URI = "http://localhost:3000/callback"; //must have trailing slash
-const SPOTIFY_ENDPOINT = "https://accounts.spotify.com/authorize";
-const RESPONSE_TYPE = "token";
+const CLIENT_ID = process.env.REACT_APP_CLIENT_ID;
+const REDIRECT_URI = process.env.REACT_APP_REDIRECT_URI;
+const ENDPOINT = process.env.REACT_APP_ENDPOINT;
 
+const RESPONSE_TYPE = "token";
 const SPACE_DELIMITER = "%20";
 const SCOPES = ["playlist-modify-public"];
 const SCOPES_URL_PARAM = SCOPES.join(SPACE_DELIMITER);
@@ -11,12 +11,10 @@ let accessToken;
 
 const Spotify = {
   authURL() {
-    const accessUrl = `${SPOTIFY_ENDPOINT}?client_id=${CLIENT_ID}&response_type=${RESPONSE_TYPE}&scope=${SCOPES_URL_PARAM}&redirect_uri=${REDIRECT_URI}`;
+    const accessUrl = `${ENDPOINT}?client_id=${CLIENT_ID}&response_type=${RESPONSE_TYPE}&scope=${SCOPES_URL_PARAM}&redirect_uri=${REDIRECT_URI}`;
     window.location = accessUrl;
   },
   getAccessToken() {
-    accessToken = window.localStorage.getItem("accessToken");
-
     if (accessToken) return accessToken;
 
     const tokenHash = window.location.href.match(/access_token=([^&]*)/);
@@ -27,9 +25,12 @@ const Spotify = {
       accessToken = token;
       const expiresIn = Number(expiresInHash[1]);
 
+      console.log(`expires in ${expiresIn * 1000}`);
+      const expiryTime = new Date(expiresIn * 1000 * 60); //60 seconds
       window.setTimeout(() => (token = ""), expiresIn * 1000);
       window.location.hash = "";
       window.localStorage.setItem("accessToken", token);
+      window.localStorage.setItem("expiresIn", expiryTime);
     }
     return accessToken;
   },
